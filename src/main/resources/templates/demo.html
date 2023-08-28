@@ -1,0 +1,329 @@
+<!DOCTYPE HTML>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>OAuth 2 Demo</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/css/bootstrap.min.css"
+          integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+            integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.12.9/dist/umd/popper.min.js"
+            integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"
+            crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.0.0/dist/js/bootstrap.min.js"
+            integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"
+            crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script>
+        function parseJwt(token) {
+            // Source: https://stackoverflow.com/a/38552294
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            return jsonPayload;
+        }
+
+        function onLoadIdToken(idToken) {
+            document.getElementById("decoded_id_token").innerText = parseJwt(idToken)
+        }
+
+        function onLoadAccessToken(accessToken) {
+            document.getElementById("decoded_access_token").innerText = parseJwt(accessToken)
+        }
+
+        function onLoad() {
+            const idToken = document.getElementById("decoded_id_token")?.getAttribute("data-id-token");
+            const accessToken = document.getElementById("decoded_access_token")?.getAttribute("data-access-token");
+
+            if (idToken) {
+                onLoadIdToken(idToken)
+            }
+            if (accessToken) {
+                onLoadAccessToken(accessToken)
+            }
+        }
+
+        async function sendGetRequest() {
+            const accessToken = document.getElementById("decoded_access_token")?.getAttribute("data-access-token");
+            document.getElementById("user").style.display = "none";
+            document.getElementById("getRequestErrorResponse").innerText = "";
+            const response = await fetch("/me",{
+                headers: {
+                    "Authorization": "Bearer "+accessToken,
+                },
+            }) ;
+            if(response.status !== 200){
+                const error = await response.json()
+                console.error(error);
+                document.getElementById("getRequestErrorResponse").innerText = JSON.stringify(error);
+                return;
+            }
+            const user = await response.json();
+            document.getElementById("picture").src = user.picture;
+            document.getElementById("name").innerText = user.givenName + (user.familyName? ` ${user.familyName}`: "");
+            document.getElementById("userId").innerText = user.uuid;
+            document.getElementById("user").style.display = "block";
+        }
+    </script>
+    <style>
+        html {
+            min-height: 100%;
+        }
+
+        nav {
+            height: 80px;
+            border-bottom: 1px solid #777777;
+            display: flex;
+        }
+
+        body {
+            background-color: #1b1c1e;
+            color: #e7e7e7;
+            margin: 0;
+        }
+
+        footer {
+            border-top: 1px solid #777777;
+            padding: 20px 0;
+            text-align: center;
+        }
+
+        .nav-mobile {
+            width: 100%;
+            font-size: 36px;
+            margin: auto 24pt;
+        }
+
+        .nav-mobile i {
+            color: #00a770;
+        }
+
+        .nav-desktop {
+            width: 100%;
+            margin: auto 24pt;
+        }
+
+        .nav-desktop .col div p {
+            font-size: 36px;
+        }
+
+        .nav-desktop .col div span {
+            font-size: 26px;
+        }
+
+        .dropdown-menu {
+            background-color: #000000;
+            border-radius: 12px;
+            padding: 14px 0;
+        }
+
+        .dropdown-item {
+            color: #e7e7e7;
+        }
+
+        .nav-desktop {
+            display: none;
+        }
+
+        @media (min-width: 768px) {
+            .nav-mobile {
+                display: none;
+            }
+
+            .nav-desktop {
+                display: block;
+            }
+        }
+
+
+        .success {
+            color: #00a770;
+        }
+        .error {
+            color: #cc0000;
+        }
+
+        a {
+            color: #8c74d2;
+        }
+    </style>
+</head>
+<body onload="onLoad();">
+<nav>
+    <div class="nav-mobile">
+        <span style="float:left;">OAuth 2 Demo</span>
+        <div class="dropleft" style="float: right">
+            <i class="fa fa-bars" data-toggle="dropdown"></i>
+            <div class="dropdown-menu">
+                <a class="dropdown-item" href="/">Home</a>
+                <span class="dropdown-item success" href="#" th:if="${idToken} or ${accessToken}">Signed In on
+                    provider</span>
+                <a class="dropdown-item" th:unless="${idToken} or ${accessToken}">Signed In on provider</a>
+                <span class="dropdown-item success"href="#" th:if="${accessToken}">Signed In on
+                    backend</span>
+                <a class="dropdown-item" th:unless="${accessToken}">Signed In on backend</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="nav-desktop">
+        <div class="row m-auto">
+            <div class="col">
+                <div style="height: 60px; display: flex; align-items: center; justify-content: start;">
+                    <p>OAuth 2 Demo</p>
+                </div>
+            </div>
+            <div class="col-1">
+                <div style="height: 60px; display: flex; align-items: center; justify-content: center">
+                    <a class="m-auto" href="/">Home</a>
+                </div>
+            </div>
+            <div class="col">
+                <div style="height: 60px; display: flex; align-items: center; justify-content: end;">
+                    <span><span style="color: #00a770">railson</span>.<a href="https://railson.dev"
+                                                                         style="color: #8c74d2">dev</a></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+<main>
+    <div class="container" style="text-align: center; padding: 24pt 0;">
+        <div th:if="not ${idToken} and not ${accessToken}">
+            <p>
+                👉 Select a provider to sign in to
+            </p>
+            <a href="/google/sign-in">
+                <img
+                        src="/btn_google_signin_light_normal_web.png"
+                />
+            </a>
+        </div>
+        <div th:unless="not ${idToken} and not ${accessToken}">
+            <i class="fa fa-check-circle success"></i>
+            Select a provider to sign in to
+        </div>
+
+        <div th:if="${idToken} and not ${accessToken}" class="pt-2">
+            <p>
+                👉 Sign in on backend with the 'id_token'
+            </p>
+            <form action="/tokensignin" method="post">
+                <div class="row">
+                    <label class="m-auto success">idToken</label>
+                </div>
+                <div class="row">
+                    <input name="idToken" class="m-auto" readonly th:value="${idToken}"/>
+                </div>
+
+                <div class="row">
+                    <span
+                            id="decoded_id_token"
+                            style="overflow-wrap: break-word;width: 100%;"
+                            th:data-id-token="${idToken}"
+                    ></span>
+                </div>
+
+                <div class="row pt-2">
+                    <button class="m-auto btn btn-light" type="submit">Sign in on backend</button>
+                </div>
+            </form>
+        </div>
+        <div th:if="${accessToken}">
+            <i class="fa fa-check-circle success"></i>
+            Sign in on backend with the 'id_token'
+        </div>
+
+
+        <div th:if="not ${idToken} and ${accessToken}" class="pt-2">
+            <p>
+                ⭐ Access to secure endpoint '/me'
+            </p>
+            <div class="row">
+                <label class="m-auto success">accessToken</label>
+            </div>
+            <div class="row">
+                <input class="m-auto" readonly th:value="${accessToken}"/>
+            </div>
+
+            <div class="row">
+                <span
+                        id="decoded_access_token"
+                        style="overflow-wrap: break-word;width: 100%;"
+                        th:data-access-token="${accessToken}"
+                ></span>
+            </div>
+
+            <div class="row pt-2">
+                <button class="m-auto btn btn-light" type="button" onclick="sendGetRequest();">Send a GET request</button>
+            </div>
+
+            <p id="getRequestErrorResponse" class="error"></p>
+            <!-- Profile Card UI Design Cool Hover Effect: https://codepen.io/FrankieDoodie/pen/NOJpVX-->
+            <div id="user" class="col-12 col-sm-6 col-md-4 col-lg-3 m-auto pt-2" style="display: none" >
+                <style>
+                    .our-team {
+                        padding: 30px 0 40px;
+                        margin-bottom: 30px;
+                        background-color: #f7f5ec;
+                        text-align: center;
+                        overflow: hidden;
+                        position: relative;
+                        border-radius: 24px;
+                    }
+                    .our-team .picture {
+                        display: inline-block;
+                        height: 130px;
+                        width: 130px;
+                        margin-bottom: 50px;
+                        z-index: 1;
+                        position: relative;
+                    }
+                    .our-team .picture img {
+                        width: 100%;
+                        height: auto;
+                        border-radius: 50%;
+                        transform: scale(1);
+                        transition: all 0.9s ease 0s;
+                        aspect-ratio: 1;
+                        object-fit: cover;
+                    }
+                    .our-team .title {
+                        display: block;
+                        font-size: 15px;
+                        color: #4e5052;
+                        text-transform: capitalize;
+                    }
+                </style>
+                <div class="our-team">
+                    <div class="picture">
+                        <img alt="picture" id="picture" class="img-fluid" src="https://i.imgur.com/197xO1r.png">
+                    </div>
+                    <div class="team-content">
+                        <h3 id="name" class="name success">Loading...</h3>
+                        <h4 id="userId" class="title">Loading...</h4>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="m-auto">
+                    <span>There is a way to revoke access using OAuth, but in this demo, it's not implemented, so you should revoke access directly through Google.</span>
+                    <a href="https://myaccount.google.com/connections">
+                        https://myaccount.google.com/connections
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<footer>
+    <i class="fa fa-github"></i>
+    GitHub 👉 <a href="https://github.com/railson-ferreira/oauth2-demo">railson-ferreira/oauth2-demo</a>
+</footer>
+</body>
+</html>
